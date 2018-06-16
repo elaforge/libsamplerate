@@ -14,6 +14,8 @@
 #ifndef SAMPLERATE_H
 #define SAMPLERATE_H
 
+#include <stdio.h> // for size_t
+
 #ifdef __cplusplus
 extern "C" {
 #endif	/* __cplusplus */
@@ -179,6 +181,55 @@ void src_float_to_short_array (const float *in, short *out, int len) ;
 
 void src_int_to_float_array (const int *in, float *out, int len) ;
 void src_float_to_int_array (const float *in, int *out, int len) ;
+
+
+typedef struct SRC_PRIVATE_tag
+{	double	last_ratio, last_position ;
+
+	int		error ;
+	int		channels ;
+
+	/* SRC_MODE_PROCESS or SRC_MODE_CALLBACK */
+	int		mode ;
+
+	/* Pointer to data to converter specific data. */
+	void	*private_data ;
+    size_t  private_data_size ;
+
+	/* Varispeed process function. */
+	int		(*vari_process) (struct SRC_PRIVATE_tag *psrc, SRC_DATA *data) ;
+
+	/* Constant speed process function. */
+	int		(*const_process) (struct SRC_PRIVATE_tag *psrc, SRC_DATA *data) ;
+
+	/* State reset. */
+	void	(*reset) (struct SRC_PRIVATE_tag *psrc) ;
+
+	/* State clone. */
+	int		(*copy) (struct SRC_PRIVATE_tag *from, struct SRC_PRIVATE_tag *to) ;
+
+	/* Data specific to SRC_MODE_CALLBACK. */
+	src_callback_t	callback_func ;
+	void			*user_callback_data ;
+	long			saved_frames ;
+	const float		*saved_data ;
+} SRC_PRIVATE ;
+
+typedef struct {
+    double  last_ratio, last_position ;
+    int     error ;
+    int     channels ;
+} SRC_STATE_FLAT;
+
+void
+src_get_state (
+    SRC_STATE *state, SRC_STATE_FLAT *saved1, size_t *size,
+    void **private_data) ;
+int
+src_put_state (
+    int converter_type,
+    SRC_STATE *state, SRC_STATE_FLAT *saved1, size_t size,
+    void *private_data) ;
 
 
 #ifdef __cplusplus

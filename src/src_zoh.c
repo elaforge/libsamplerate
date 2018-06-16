@@ -32,6 +32,12 @@ typedef struct
 	float	last_value [] ;
 } ZOH_DATA ;
 
+static size_t
+get_private_size (ZOH_DATA *from_priv)
+{
+	return sizeof (ZOH_DATA) + from_priv->channels * sizeof (float) ;
+}
+
 /*----------------------------------------------------------------------------------------
 */
 
@@ -168,6 +174,7 @@ zoh_set_converter (SRC_PRIVATE *psrc, int src_enum)
 
 	if (priv == NULL)
 		return SRC_ERR_MALLOC_FAILED ;
+    psrc->private_data_size = get_private_size(priv);
 
 	priv->zoh_magic_marker = ZOH_MAGIC_MARKER ;
 	priv->channels = psrc->channels ;
@@ -208,7 +215,7 @@ zoh_copy (SRC_PRIVATE *from, SRC_PRIVATE *to)
 
 	ZOH_DATA *to_priv = NULL ;
 	ZOH_DATA* from_priv = (ZOH_DATA*) from->private_data ;
-	size_t private_size = sizeof (*to_priv) + from_priv->channels * sizeof (float) ;
+	size_t private_size = from->private_data_size;
 
 	if ((to_priv = ZERO_ALLOC (ZOH_DATA, private_size)) == NULL)
 		return SRC_ERR_MALLOC_FAILED ;

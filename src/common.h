@@ -93,42 +93,12 @@ enum
 	SRC_ERR_MAX_ERROR
 } ;
 
-typedef struct SRC_PRIVATE_tag
-{	double	last_ratio, last_position ;
-
-	int		error ;
-	int		channels ;
-
-	/* SRC_MODE_PROCESS or SRC_MODE_CALLBACK */
-	int		mode ;
-
-	/* Pointer to data to converter specific data. */
-	void	*private_data ;
-
-	/* Varispeed process function. */
-	int		(*vari_process) (struct SRC_PRIVATE_tag *psrc, SRC_DATA *data) ;
-
-	/* Constant speed process function. */
-	int		(*const_process) (struct SRC_PRIVATE_tag *psrc, SRC_DATA *data) ;
-
-	/* State reset. */
-	void	(*reset) (struct SRC_PRIVATE_tag *psrc) ;
-
-	/* State clone. */
-	int		(*copy) (struct SRC_PRIVATE_tag *from, struct SRC_PRIVATE_tag *to) ;
-
-	/* Data specific to SRC_MODE_CALLBACK. */
-	src_callback_t	callback_func ;
-	void			*user_callback_data ;
-	long			saved_frames ;
-	const float		*saved_data ;
-} SRC_PRIVATE ;
-
 /* In src_sinc.c */
 const char* sinc_get_name (int src_enum) ;
 const char* sinc_get_description (int src_enum) ;
 
 int sinc_set_converter (SRC_PRIVATE *psrc, int src_enum) ;
+int sinc_fix_state(void *filter, int src_enum);
 
 /* In src_linear.c */
 const char* linear_get_name (int src_enum) ;

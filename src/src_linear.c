@@ -34,6 +34,12 @@ typedef struct
 	float	last_value [] ;
 } LINEAR_DATA ;
 
+static size_t
+get_private_size (LINEAR_DATA *from_priv)
+{
+	return sizeof (LINEAR_DATA) + from_priv->channels * sizeof (float) ;
+}
+
 /*----------------------------------------------------------------------------------------
 */
 
@@ -177,6 +183,7 @@ linear_set_converter (SRC_PRIVATE *psrc, int src_enum)
 
 	if (priv == NULL)
 		return SRC_ERR_MALLOC_FAILED ;
+    psrc->private_data_size = get_private_size(priv);
 
 	priv->linear_magic_marker = LINEAR_MAGIC_MARKER ;
 	priv->channels = psrc->channels ;
@@ -217,7 +224,7 @@ linear_copy (SRC_PRIVATE *from, SRC_PRIVATE *to)
 
 	LINEAR_DATA *to_priv = NULL ;
 	LINEAR_DATA* from_priv = (LINEAR_DATA*) from->private_data ;
-	size_t private_size = sizeof (*to_priv) + from_priv->channels * sizeof (float) ;
+	size_t private_size = from->private_data_size;
 
 	if ((to_priv = ZERO_ALLOC (LINEAR_DATA, private_size)) == NULL)
 		return SRC_ERR_MALLOC_FAILED ;

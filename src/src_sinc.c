@@ -6,6 +6,8 @@
 ** file at : https://github.com/erikd/libsamplerate/blob/master/COPYING
 */
 
+#include <assert.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -97,6 +99,14 @@ fp_to_double (increment_t x)
 /*----------------------------------------------------------------------------------------
 */
 
+static size_t
+get_private_size (SINC_FILTER *from_filter)
+{
+	return sizeof (SINC_FILTER)
+        + sizeof (from_filter->buffer [0])
+            * (from_filter->b_len + from_filter->channels) ;
+}
+
 const char*
 sinc_get_name (int src_enum)
 {
@@ -135,6 +145,33 @@ sinc_get_description (int src_enum)
 
 	return NULL ;
 } /* sinc_get_descrition */
+
+int
+sinc_fix_state(void *psrc, int src_enum)
+{
+        SINC_FILTER *filter = (SINC_FILTER *) psrc;
+        assert(filter->sinc_magic_marker == SINC_MAGIC_MARKER);
+	switch (src_enum)
+	{	case SRC_SINC_FASTEST :
+				filter->coeffs = fastest_coeffs.coeffs ;
+				filter->coeff_half_len = ARRAY_LEN (fastest_coeffs.coeffs) - 2 ;
+				filter->index_inc = fastest_coeffs.increment ;
+				break ;
+		case SRC_SINC_MEDIUM_QUALITY :
+				filter->coeffs = slow_mid_qual_coeffs.coeffs ;
+				filter->coeff_half_len = ARRAY_LEN (slow_mid_qual_coeffs.coeffs) - 2 ;
+				filter->index_inc = slow_mid_qual_coeffs.increment ;
+				break ;
+		case SRC_SINC_BEST_QUALITY :
+				filter->coeffs = slow_high_qual_coeffs.coeffs ;
+				filter->coeff_half_len = ARRAY_LEN (slow_high_qual_coeffs.coeffs) - 2 ;
+				filter->index_inc = slow_high_qual_coeffs.increment ;
+				break ;
+		default :
+                                return 0;
+		} ;
+    return 1;
+}
 
 int
 sinc_set_converter (SRC_PRIVATE *psrc, int src_enum)
@@ -183,29 +220,8 @@ sinc_set_converter (SRC_PRIVATE *psrc, int src_enum)
 		} ;
 	psrc->reset = sinc_reset ;
 	psrc->copy = sinc_copy ;
-
-	switch (src_enum)
-	{	case SRC_SINC_FASTEST :
-				temp_filter.coeffs = fastest_coeffs.coeffs ;
-				temp_filter.coeff_half_len = ARRAY_LEN (fastest_coeffs.coeffs) - 2 ;
-				temp_filter.index_inc = fastest_coeffs.increment ;
-				break ;
-
-		case SRC_SINC_MEDIUM_QUALITY :
-				temp_filter.coeffs = slow_mid_qual_coeffs.coeffs ;
-				temp_filter.coeff_half_len = ARRAY_LEN (slow_mid_qual_coeffs.coeffs) - 2 ;
-				temp_filter.index_inc = slow_mid_qual_coeffs.increment ;
-				break ;
-
-		case SRC_SINC_BEST_QUALITY :
-				temp_filter.coeffs = slow_high_qual_coeffs.coeffs ;
-				temp_filter.coeff_half_len = ARRAY_LEN (slow_high_qual_coeffs.coeffs) - 2 ;
-				temp_filter.index_inc = slow_high_qual_coeffs.increment ;
-				break ;
-
-		default :
-				return SRC_ERR_BAD_CONVERTER ;
-		} ;
+        if (!sinc_fix_state(&temp_filter, src_enum))
+		return SRC_ERR_BAD_CONVERTER ;
 
 	/*
 	** FIXME : This needs to be looked at more closely to see if there is
@@ -224,6 +240,7 @@ sinc_set_converter (SRC_PRIVATE *psrc, int src_enum)
 	memset (&temp_filter, 0xEE, sizeof (temp_filter)) ;
 
 	psrc->private_data = filter ;
+    psrc->private_data_size = get_private_size(filter) ;
 
 	sinc_reset (psrc) ;
 
@@ -236,6 +253,7 @@ sinc_set_converter (SRC_PRIVATE *psrc, int src_enum)
 
 	return SRC_ERR_NO_ERROR ;
 } /* sinc_set_converter */
+
 
 static void
 sinc_reset (SRC_PRIVATE *psrc)
@@ -264,7 +282,7 @@ sinc_copy (SRC_PRIVATE *from, SRC_PRIVATE *to)
 
 	SINC_FILTER *to_filter = NULL ;
 	SINC_FILTER* from_filter = (SINC_FILTER*) from->private_data ;
-	size_t private_length = sizeof (SINC_FILTER) + sizeof (from_filter->buffer [0]) * (from_filter->b_len + from_filter->channels) ;
+	size_t private_length = from->private_data_size;
 
 	if ((to_filter = ZERO_ALLOC (SINC_FILTER, private_length)) == NULL)
 		return SRC_ERR_MALLOC_FAILED ;

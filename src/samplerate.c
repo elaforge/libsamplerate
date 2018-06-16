@@ -81,6 +81,52 @@ src_clone (SRC_STATE* orig, int *error)
 	return (SRC_STATE*) psrc ;
 }
 
+
+void
+src_get_state (
+    SRC_STATE *state, SRC_STATE_FLAT *saved1, size_t *size, void **private_data)
+{
+    SRC_PRIVATE *psrc = (SRC_PRIVATE*) state ;
+    saved1->last_ratio = psrc->last_ratio;
+    saved1->last_position = psrc->last_position;
+    saved1->error = psrc->error;
+    saved1->channels = psrc->channels;
+
+    *size = psrc->private_data_size;
+    *private_data = psrc->private_data;
+}
+
+int
+src_put_state (
+    int converter_type,
+    SRC_STATE *state, SRC_STATE_FLAT *saved1, size_t size, void *private_data)
+{
+    SRC_PRIVATE *psrc = (SRC_PRIVATE*) state;
+    psrc->last_ratio = saved1->last_ratio;
+    psrc->last_position = saved1->last_position;
+    psrc->error = saved1->error;
+    psrc->channels = saved1->channels;
+
+    if (size != psrc->private_data_size)
+        return 0;
+    memcpy(psrc->private_data, private_data, size);
+
+    switch (converter_type) {
+        case SRC_SINC_FASTEST:
+        case SRC_SINC_MEDIUM_QUALITY:
+        case SRC_SINC_BEST_QUALITY:
+            sinc_fix_state(psrc->private_data, converter_type);
+            break;
+        case SRC_ZERO_ORDER_HOLD:
+        case SRC_LINEAR:
+            break;
+        default:
+            return 0;
+    };
+    return 1;
+}
+
+
 SRC_STATE*
 src_callback_new (src_callback_t func, int converter_type, int channels, int *error, void* cb_data)
 {	SRC_STATE	*src_state ;
