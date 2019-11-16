@@ -185,6 +185,7 @@ void src_float_to_int_array (const float *in, int *out, int len) ;
 
 typedef struct SRC_PRIVATE_tag
 {	double	last_ratio, last_position ;
+	int converter_type;
 
 	int		error ;
 	int		channels ;
@@ -219,6 +220,7 @@ typedef struct {
     double  last_ratio, last_position ;
     int     error ;
     int     channels ;
+    int converter_type;
 } SRC_STATE_FLAT;
 
 void

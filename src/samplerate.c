@@ -91,6 +91,20 @@ src_get_state (
     saved1->last_position = psrc->last_position;
     saved1->error = psrc->error;
     saved1->channels = psrc->channels;
+    saved1->converter_type = psrc->converter_type;
+
+    switch (psrc->converter_type) {
+        case SRC_SINC_FASTEST:
+        case SRC_SINC_MEDIUM_QUALITY:
+        case SRC_SINC_BEST_QUALITY:
+            sinc_clear_state(psrc->private_data);
+            break;
+        case SRC_ZERO_ORDER_HOLD:
+        case SRC_LINEAR:
+            break;
+        default:
+            printf("=== unknown type: %d\n", psrc->converter_type);
+    };
 
     *size = psrc->private_data_size;
     *private_data = psrc->private_data;
@@ -106,23 +120,27 @@ src_put_state (
     psrc->last_position = saved1->last_position;
     psrc->error = saved1->error;
     psrc->channels = saved1->channels;
+    psrc->converter_type = saved1->converter_type;
 
-    if (size != psrc->private_data_size)
+    if (size != psrc->private_data_size) {
+        printf("=== expected size %zu, got size %zu\n", psrc->private_data_size, size);
         return 0;
+    }
     memcpy(psrc->private_data, private_data, size);
-
-    switch (converter_type) {
+    switch (psrc->converter_type) {
         case SRC_SINC_FASTEST:
         case SRC_SINC_MEDIUM_QUALITY:
         case SRC_SINC_BEST_QUALITY:
-            sinc_fix_state(psrc->private_data, converter_type);
+            sinc_fix_state(psrc->private_data, psrc->converter_type);
             break;
         case SRC_ZERO_ORDER_HOLD:
         case SRC_LINEAR:
             break;
         default:
+            printf("=== unknown type: %d\n", psrc->converter_type);
             return 0;
     };
+
     return 1;
 }
 
@@ -222,6 +240,14 @@ src_process (SRC_STATE *state, SRC_DATA *data)
 	/* Special case for when last_ratio has not been set. */
 	if (psrc->last_ratio < (1.0 / SRC_MAX_RATIO))
 		psrc->last_ratio = data->src_ratio ;
+
+        switch (psrc->converter_type) {
+            case SRC_SINC_FASTEST:
+            case SRC_SINC_MEDIUM_QUALITY:
+            case SRC_SINC_BEST_QUALITY:
+                sinc_fix_state(psrc->private_data, psrc->converter_type);
+                break;
+        };
 
 	/* Now process. */
 	if (fabs (psrc->last_ratio - data->src_ratio) < 1e-15)
@@ -595,6 +621,7 @@ src_float_to_int_array (const float *in, int *out, int len)
 static int
 psrc_set_converter (SRC_PRIVATE	*psrc, int converter_type)
 {
+        psrc->converter_type = converter_type;
 	if (sinc_set_converter (psrc, converter_type) == SRC_ERR_NO_ERROR)
 		return SRC_ERR_NO_ERROR ;
 

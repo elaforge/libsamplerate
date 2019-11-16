@@ -99,6 +99,7 @@ const char* sinc_get_description (int src_enum) ;
 
 int sinc_set_converter (SRC_PRIVATE *psrc, int src_enum) ;
 int sinc_fix_state(void *filter, int src_enum);
+void sinc_clear_state(void *psrc);
 
 /* In src_linear.c */
 const char* linear_get_name (int src_enum) ;

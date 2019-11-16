@@ -99,10 +99,50 @@ fp_to_double (increment_t x)
 /*----------------------------------------------------------------------------------------
 */
 
-static size_t
-get_private_size (SINC_FILTER *from_filter)
+typedef struct {
+    coeff_t const *coeffs;
+    int coeff_half_len;
+    int index_inc;
+} quality;
+
+// TODO If I use this I can take coeffs out of SINC_FILTER, which will
+// remove the need for sinc_fix_state and sinc_clear_state.  But it's
+// a pain because the thousand lines of copy paste.
+static const quality *
+get_quality(int src_enum)
 {
-	return sizeof (SINC_FILTER)
+    const static quality fastest = {
+        .coeffs = fastest_coeffs.coeffs,
+        .coeff_half_len = ARRAY_LEN (fastest_coeffs.coeffs) - 2,
+        .index_inc = 128, // fastest_coeffs.increment
+    };
+    const static quality medium = {
+        .coeffs = slow_mid_qual_coeffs.coeffs,
+        .coeff_half_len = ARRAY_LEN (slow_mid_qual_coeffs.coeffs) - 2,
+        .index_inc = 491, // slow_mid_qual_coeffs.increment
+    };
+    const static quality best = {
+        .coeffs = slow_high_qual_coeffs.coeffs,
+        .coeff_half_len = ARRAY_LEN (slow_high_qual_coeffs.coeffs) - 2,
+        .index_inc = 2381, // slow_high_qual_coeffs.increment
+    };
+
+    switch (src_enum) {
+        case SRC_SINC_FASTEST:
+            return &fastest;
+        case SRC_SINC_MEDIUM_QUALITY:
+            return &medium;
+        case SRC_SINC_BEST_QUALITY:
+            return &best;
+        default:
+            return NULL;
+    };
+}
+
+static size_t
+get_private_size(SINC_FILTER *from_filter)
+{
+    return sizeof (SINC_FILTER)
         + sizeof (from_filter->buffer [0])
             * (from_filter->b_len + from_filter->channels) ;
 }
@@ -145,6 +185,15 @@ sinc_get_description (int src_enum)
 
 	return NULL ;
 } /* sinc_get_descrition */
+
+void
+sinc_clear_state(void *psrc)
+{
+    SINC_FILTER *filter = (SINC_FILTER *) psrc;
+    filter->coeffs = NULL;
+    filter->coeff_half_len = 0;
+    filter->index_inc = 0;
+}
 
 int
 sinc_fix_state(void *psrc, int src_enum)
@@ -240,7 +289,7 @@ sinc_set_converter (SRC_PRIVATE *psrc, int src_enum)
 	memset (&temp_filter, 0xEE, sizeof (temp_filter)) ;
 
 	psrc->private_data = filter ;
-    psrc->private_data_size = get_private_size(filter) ;
+	psrc->private_data_size = get_private_size(filter) ;
 
 	sinc_reset (psrc) ;
 
